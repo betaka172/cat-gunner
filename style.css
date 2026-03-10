@@ -1,0 +1,442 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body {
+    background: #0a0a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 900px;
+    max-height: 600px;
+    border: 2px solid #1a3a5c;
+    border-radius: 4px;
+    box-shadow: 0 0 40px rgba(0, 100, 255, 0.3), inset 0 0 40px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    z-index: 5;
+}
+
+#score-display, #wave-display {
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(0, 150, 255, 0.8);
+    letter-spacing: 2px;
+}
+
+#lives-display {
+    display: flex;
+    gap: 4px;
+}
+
+.life-icon {
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle, #ff6b6b, #c0392b);
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 8px rgba(255, 100, 100, 0.6);
+}
+
+.life-icon.lost {
+    background: #333;
+    border-color: #555;
+    box-shadow: none;
+}
+
+/* ---- Touch Controls ---- */
+#touch-controls {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 45%;
+    pointer-events: none;
+    z-index: 8;
+}
+
+#joystick-zone {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 50%;
+    height: 100%;
+    pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#joystick-base {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#joystick-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 170, 255, 0.6), rgba(0, 100, 200, 0.4));
+    border: 2px solid rgba(0, 170, 255, 0.5);
+    position: absolute;
+    transition: none;
+}
+
+#fire-btn-zone {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 50%;
+    height: 100%;
+    pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#fire-btn {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 80, 30, 0.7), rgba(200, 40, 10, 0.5));
+    border: 3px solid rgba(255, 120, 50, 0.6);
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-shadow: 0 0 8px rgba(255, 100, 50, 0.8);
+}
+
+#fire-btn.active {
+    background: radial-gradient(circle, rgba(255, 120, 50, 0.9), rgba(255, 60, 20, 0.7));
+    border-color: rgba(255, 180, 80, 0.8);
+    box-shadow: 0 0 20px rgba(255, 100, 50, 0.5);
+    transform: scale(0.93);
+}
+
+/* ---- Screens ---- */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10;
+}
+
+.screen-content {
+    text-align: center;
+    color: #fff;
+    padding: 20px;
+}
+
+.game-title {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: 6px;
+    background: linear-gradient(180deg, #00b4ff, #0066cc, #003366);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px rgba(0, 100, 255, 0.5));
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #8ab4f8;
+    margin-bottom: 24px;
+    letter-spacing: 3px;
+    font-style: italic;
+}
+
+.controls-info {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.control-row {
+    font-size: 14px;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+kbd {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 13px;
+    font-family: inherit;
+    color: #fff;
+    background: #2a2a3a;
+    border: 1px solid #555;
+    border-radius: 4px;
+    box-shadow: 0 2px 0 #111;
+    min-width: 28px;
+    text-align: center;
+}
+
+.game-btn {
+    padding: 14px 48px;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    color: #fff;
+    background: linear-gradient(180deg, #0077cc, #004488);
+    border: 2px solid #00aaff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+}
+
+.game-btn:hover {
+    background: linear-gradient(180deg, #0088dd, #005599);
+    box-shadow: 0 0 20px rgba(0, 150, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.game-btn:active {
+    transform: scale(0.98);
+}
+
+.gameover-title {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 5px;
+    color: #ff4444;
+    text-shadow: 0 0 30px rgba(255, 50, 50, 0.6);
+    margin-bottom: 18px;
+}
+
+.final-score {
+    font-size: 24px;
+    color: #fff;
+    margin-bottom: 8px;
+    letter-spacing: 3px;
+}
+
+.high-score {
+    font-size: 18px;
+    color: #ffd700;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+}
+
+/* ---- Desktop (large screens) ---- */
+@media (min-width: 920px) and (min-height: 620px) {
+    #game-container {
+        border-radius: 8px;
+        border-width: 3px;
+    }
+    #ui-overlay {
+        padding: 12px 20px;
+    }
+    #score-display, #wave-display {
+        font-size: 18px;
+    }
+    .life-icon {
+        width: 24px;
+        height: 24px;
+    }
+    #lives-display {
+        gap: 6px;
+    }
+    .game-title {
+        font-size: 64px;
+        letter-spacing: 8px;
+    }
+    .subtitle {
+        font-size: 16px;
+        margin-bottom: 32px;
+    }
+    .controls-info {
+        margin-bottom: 32px;
+        gap: 12px;
+    }
+    .control-row {
+        font-size: 16px;
+    }
+    kbd {
+        padding: 4px 10px;
+        font-size: 14px;
+        min-width: 32px;
+    }
+    .game-btn {
+        font-size: 20px;
+    }
+    .gameover-title {
+        font-size: 56px;
+        letter-spacing: 6px;
+        margin-bottom: 24px;
+    }
+    .final-score {
+        font-size: 28px;
+    }
+    .high-score {
+        font-size: 20px;
+        margin-bottom: 32px;
+    }
+}
+
+/* ---- Very small screens (small phones) ---- */
+@media (max-height: 400px) {
+    .game-title {
+        font-size: 32px;
+        letter-spacing: 4px;
+    }
+    .subtitle {
+        font-size: 11px;
+        margin-bottom: 12px;
+    }
+    .controls-info {
+        margin-bottom: 12px;
+    }
+    .control-row {
+        font-size: 12px;
+    }
+    .game-btn {
+        padding: 10px 36px;
+        font-size: 15px;
+    }
+    .gameover-title {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    .final-score {
+        font-size: 20px;
+    }
+    .high-score {
+        font-size: 15px;
+        margin-bottom: 16px;
+    }
+    #joystick-base {
+        width: 90px;
+        height: 90px;
+    }
+    #joystick-thumb {
+        width: 36px;
+        height: 36px;
+    }
+    #fire-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 13px;
+    }
+}
+
+/* Landscape phone tweaks */
+@media (max-height: 500px) and (orientation: landscape) {
+    #touch-controls {
+        height: 55%;
+    }
+}
+
+/* ---- Rotate Prompt (portrait on touch devices) ---- */
+#rotate-prompt {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #0a0a1a;
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+.rotate-content {
+    text-align: center;
+    color: #8ab4f8;
+}
+
+.rotate-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: rotate-spin 2s ease-in-out infinite;
+}
+
+@keyframes rotate-spin {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+.rotate-content p {
+    font-size: 18px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.rotate-sub {
+    font-size: 14px !important;
+    color: #6688aa;
+}
+
+/* Show rotate prompt on portrait touch devices */
+@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+    #rotate-prompt {
+        display: flex;
+    }
+    #game-container {
+        display: none;
+    }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cat Gunner</string>
+    <string name="title_activity_main">Cat Gunner</string>
+    <string name="package_name">com.catgunner.app</string>
+    <string name="custom_url_scheme">com.catgunner.app</string>
+</resources>

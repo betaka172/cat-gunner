@@ -1,0 +1,14 @@
+{
+  "name": "cat-gunner",
+  "version": "1.0.0",
+  "description": "Cat Gunner - Shooting Game",
+  "main": "index.html",
+  "scripts": {},
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0"
+  }
+}

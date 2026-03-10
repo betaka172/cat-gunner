@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Cat Gunner - Shooting Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay">
+            <div id="score-display">SCORE: <span id="score">0</span></div>
+            <div id="lives-display" title="Lives"></div>
+            <div id="wave-display">WAVE <span id="wave">1</span></div>
+        </div>
+
+        <!-- Touch Controls (shown only on touch devices) -->
+        <div id="touch-controls">
+            <div id="joystick-zone">
+                <div id="joystick-base">
+                    <div id="joystick-thumb"></div>
+                </div>
+            </div>
+            <div id="fire-btn-zone">
+                <div id="fire-btn">FIRE</div>
+            </div>
+        </div>
+
+        <div id="start-screen" class="screen">
+            <div class="screen-content">
+                <h1 class="game-title">CAT GUNNER</h1>
+                <p class="subtitle">Pen is mightier than the sword!</p>
+                <div class="controls-info" id="controls-keyboard">
+                    <div class="control-row"><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> Move</div>
+                    <div class="control-row"><kbd>SPACE</kbd> Fire Missile</div>
+                </div>
+                <div class="controls-info" id="controls-touch" style="display:none;">
+                    <div class="control-row">Left: Joystick to Move</div>
+                    <div class="control-row">Right: Tap to Fire</div>
+                </div>
+                <button id="start-btn" class="game-btn">START GAME</button>
+            </div>
+        </div>
+        <div id="gameover-screen" class="screen" style="display:none;">
+            <div class="screen-content">
+                <h1 class="gameover-title">GAME OVER</h1>
+                <p class="final-score">SCORE: <span id="final-score">0</span></p>
+                <p class="high-score">HIGH SCORE: <span id="high-score">0</span></p>
+                <button id="retry-btn" class="game-btn">RETRY</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portrait orientation prompt (touch devices only) -->
+    <div id="rotate-prompt">
+        <div class="rotate-content">
+            <div class="rotate-icon">&#x1F504;</div>
+            <p>Please rotate your device to landscape mode</p>
+            <p class="rotate-sub">横向きにしてプレイしてください</p>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
