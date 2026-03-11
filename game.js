@@ -38,6 +38,211 @@ const game = {
     shakeIntensity: 0,
 };
 
+// ---- Sound Manager (Web Audio API) ----
+const soundManager = {
+    ctx: null,
+    masterGain: null,
+    bgmGain: null,
+    sfxGain: null,
+    muted: false,
+    bgmPlaying: false,
+    bgmIntervalId: null,
+    noiseBuffer: null,
+    initialized: false,
+
+    init() {
+        if (this.initialized) return;
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.ctx.createGain();
+            this.bgmGain = this.ctx.createGain();
+            this.sfxGain = this.ctx.createGain();
+            this.masterGain.gain.value = 0.5;
+            this.bgmGain.gain.value = 0.3;
+            this.sfxGain.gain.value = 0.6;
+            this.bgmGain.connect(this.masterGain);
+            this.sfxGain.connect(this.masterGain);
+            this.masterGain.connect(this.ctx.destination);
+            this.ctx.resume();
+            this.noiseBuffer = this.createNoiseBuffer(1);
+            this.initialized = true;
+        } catch (e) { /* Web Audio not supported */ }
+    },
+
+    createNoiseBuffer(duration) {
+        const sr = this.ctx.sampleRate;
+        const buf = this.ctx.createBuffer(1, sr * duration, sr);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        return buf;
+    },
+
+    playShoot() {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1200, t);
+        osc.frequency.exponentialRampToValueAtTime(200, t + 0.1);
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+        osc.connect(g); g.connect(this.sfxGain);
+        osc.start(t); osc.stop(t + 0.1);
+    },
+
+    playEnemyDefeat(isBoss) {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        const dur = isBoss ? 0.5 : 0.2;
+        // Noise burst
+        const ns = this.ctx.createBufferSource();
+        ns.buffer = this.noiseBuffer;
+        const ng = this.ctx.createGain();
+        ng.gain.setValueAtTime(isBoss ? 0.5 : 0.3, t);
+        ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        const flt = this.ctx.createBiquadFilter();
+        flt.type = 'bandpass'; flt.frequency.value = isBoss ? 400 : 800; flt.Q.value = 1;
+        ns.connect(flt); flt.connect(ng); ng.connect(this.sfxGain);
+        ns.start(t); ns.stop(t + dur);
+        // Low thud
+        const osc = this.ctx.createOscillator();
+        const og = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(isBoss ? 40 : 80, t);
+        osc.frequency.exponentialRampToValueAtTime(20, t + dur);
+        og.gain.setValueAtTime(0.4, t);
+        og.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(og); og.connect(this.sfxGain);
+        osc.start(t); osc.stop(t + dur);
+    },
+
+    playItemPickup() {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        [523, 659, 784].forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = 'sine'; osc.frequency.value = freq;
+            g.gain.setValueAtTime(0, t + i * 0.08);
+            g.gain.linearRampToValueAtTime(0.3, t + i * 0.08 + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.12);
+            osc.connect(g); g.connect(this.sfxGain);
+            osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.12);
+        });
+    },
+
+    playBossRoar() {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(60, t);
+        osc.frequency.linearRampToValueAtTime(40, t + 0.8);
+        const lfo = this.ctx.createOscillator();
+        const lfoG = this.ctx.createGain();
+        lfo.type = 'triangle'; lfo.frequency.value = 8; lfoG.gain.value = 20;
+        lfo.connect(lfoG); lfoG.connect(osc.frequency);
+        const dist = this.ctx.createWaveShaper();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) { const x = (i * 2) / 256 - 1; curve[i] = (Math.PI + 100) * x / (Math.PI + 100 * Math.abs(x)); }
+        dist.curve = curve; dist.oversample = '2x';
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(0.001, t);
+        g.gain.linearRampToValueAtTime(0.4, t + 0.05);
+        g.gain.setValueAtTime(0.4, t + 0.3);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+        osc.connect(dist); dist.connect(g); g.connect(this.sfxGain);
+        lfo.start(t); lfo.stop(t + 0.8);
+        osc.start(t); osc.stop(t + 0.8);
+    },
+
+    playCharacterVoice(type) {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        const cfgs = {
+            start:  { f1: 800, f2: 1200, dur: 0.15, sw: 1.0 },
+            damage: { f1: 700, f2: 1800, dur: 0.1, sw: 0.7 },
+            death:  { f1: 600, f2: 1000, dur: 0.4, sw: 0.4 },
+        };
+        const c = cfgs[type] || cfgs.start;
+        [c.f1, c.f2].forEach(freq => {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            const flt = this.ctx.createBiquadFilter();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, t);
+            osc.frequency.exponentialRampToValueAtTime(Math.max(freq * c.sw, 20), t + c.dur);
+            flt.type = 'bandpass'; flt.frequency.value = freq; flt.Q.value = 5;
+            g.gain.setValueAtTime(0.001, t);
+            g.gain.linearRampToValueAtTime(0.15, t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.001, t + c.dur);
+            osc.connect(flt); flt.connect(g); g.connect(this.sfxGain);
+            osc.start(t); osc.stop(t + c.dur);
+        });
+    },
+
+    playDamage() {
+        if (!this.initialized || this.muted) return;
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'square'; osc.frequency.value = 200;
+        g.gain.setValueAtTime(0.3, t);
+        g.gain.setValueAtTime(0, t + 0.05);
+        g.gain.setValueAtTime(0.3, t + 0.1);
+        g.gain.setValueAtTime(0, t + 0.15);
+        g.gain.setValueAtTime(0.3, t + 0.2);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.connect(g); g.connect(this.sfxGain);
+        osc.start(t); osc.stop(t + 0.3);
+    },
+
+    startBGM() {
+        if (!this.initialized || this.bgmPlaying) return;
+        this.bgmPlaying = true;
+        let step = 0;
+        const melody = [262,262,330,392,440,440,392,0,330,330,262,330,392,330,262,0];
+        const bass =   [131,0,131,0,175,0,175,0,196,0,196,0,131,0,131,0];
+        this.bgmIntervalId = setInterval(() => {
+            if (this.muted || !this.bgmPlaying || !this.ctx) return;
+            const t = this.ctx.currentTime;
+            const idx = step % melody.length;
+            if (melody[idx] > 0) {
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = 'square'; o.frequency.value = melody[idx];
+                g.gain.setValueAtTime(0.12, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+                o.connect(g); g.connect(this.bgmGain);
+                o.start(t); o.stop(t + 0.12);
+            }
+            if (bass[idx] > 0) {
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = 'triangle'; o.frequency.value = bass[idx];
+                g.gain.setValueAtTime(0.1, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+                o.connect(g); g.connect(this.bgmGain);
+                o.start(t); o.stop(t + 0.12);
+            }
+            step++;
+        }, 125);
+    },
+
+    stopBGM() {
+        this.bgmPlaying = false;
+        if (this.bgmIntervalId) { clearInterval(this.bgmIntervalId); this.bgmIntervalId = null; }
+    },
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.masterGain) this.masterGain.gain.value = this.muted ? 0 : 0.5;
+        const btn = document.getElementById('mute-btn');
+        if (btn) { btn.textContent = this.muted ? '\u{1F507}' : '\u{1F50A}'; btn.classList.toggle('muted', this.muted); }
+    }
+};
+
 // ---- Keyboard Input ----
 const keys = {};
 window.addEventListener('keydown', e => {
@@ -45,6 +250,7 @@ window.addEventListener('keydown', e => {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
     }
+    if (e.code === 'KeyM') { if (!soundManager.initialized) soundManager.init(); soundManager.toggleMute(); }
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -565,6 +771,7 @@ function update() {
 
     if (wantFire && player.fireTimer <= 0) {
         player.fireTimer = currentFireRate;
+        soundManager.playShoot();
         if (spreadShotTimer > 0) {
             for (let angle = -0.2; angle <= 0.2; angle += 0.2) {
                 bullets.push({
@@ -605,7 +812,7 @@ function update() {
         game.waveTimer = 0;
         game.wave++;
         document.getElementById('wave').textContent = game.wave;
-        if (game.wave % 3 === 0) enemies.push(createEnemy('boss'));
+        if (game.wave % 3 === 0) { enemies.push(createEnemy('boss')); soundManager.playBossRoar(); }
     }
 
     // Update enemies
@@ -633,6 +840,7 @@ function update() {
                 bullets.splice(i, 1);
                 spawnExplosion(e.x, e.y, '#ff8800', 4);
                 if (e.hp <= 0) {
+                    soundManager.playEnemyDefeat(e.type === 'boss');
                     game.score += e.score;
                     document.getElementById('score').textContent = game.score;
                     spawnExplosion(e.x, e.y, e.type === 'boss' ? '#ff00ff' : '#ff4400', e.type === 'boss' ? 40 : 15);
@@ -667,6 +875,7 @@ function update() {
         p.life--;
         if (p.life <= 0) return false;
         if (Math.hypot(p.x - player.x, p.y - player.y) < 30) {
+            soundManager.playItemPickup();
             if (p.type === 'rapid') rapidFireTimer = 300;
             else if (p.type === 'heal') { game.lives = Math.min(5, game.lives + 1); updateLivesDisplay(); }
             else if (p.type === 'spread') spreadShotTimer = 300;
@@ -689,6 +898,8 @@ function update() {
 }
 
 function takeDamage() {
+    soundManager.playDamage();
+    soundManager.playCharacterVoice('damage');
     game.lives--;
     player.invincible = 90;
     damageFlash = 10;
@@ -794,9 +1005,15 @@ function startGame() {
 
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('gameover-screen').style.display = 'none';
+
+    if (!soundManager.initialized) soundManager.init();
+    soundManager.playCharacterVoice('start');
+    soundManager.startBGM();
 }
 
 function gameOver() {
+    soundManager.stopBGM();
+    soundManager.playCharacterVoice('death');
     game.running = false;
     if (game.score > game.highScore) {
         game.highScore = game.score;
@@ -822,6 +1039,7 @@ initTouchControls();
 
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('retry-btn').addEventListener('click', startGame);
+document.getElementById('mute-btn').addEventListener('click', () => { if (!soundManager.initialized) soundManager.init(); soundManager.toggleMute(); });
 
 window.addEventListener('keydown', e => {
     if (e.code === 'Enter' || e.code === 'Space') {
