@@ -228,16 +228,56 @@ const soundManager = {
     startBossBGM() {
         if (!this.initialized) return;
         this.bgmMode = 'boss';
-        // Dark march: G3 G3 G3 Eb3 . Bb3 G3 Eb3 . Bb3 G3 (Imperial-style heavy minor)
+        if (this.bgmIntervalId) { clearInterval(this.bgmIntervalId); this.bgmIntervalId = null; }
+        // Imperial dark march - heavy, menacing rhythm with dual oscillators + percussion
         const melody = [
-            196,196,196,156,0,233,196,156,0,233,196,0,
-            294,294,294,311,0,156,147,156,0,233,196,0
+            196,196,196,196,156,0,233,196,156,0,233,196,0,0,0,0,
+            294,294,294,294,311,0,233,185,156,0,233,196,0,0,0,0
         ];
         const bass = [
-            98,0,98,0,98,0,98,0,117,0,98,0,
-            147,0,147,0,78,0,78,0,117,0,98,0
+            98,0,98,0,98,0,98,0,78,0,78,0,98,0,98,0,
+            73,0,73,0,78,0,78,0,78,0,78,0,98,0,98,0
         ];
-        this._runBGMLoop(melody, bass, 200, 'sawtooth', 'square');
+        let step = 0;
+        this.bgmPlaying = true;
+        this.bgmIntervalId = setInterval(() => {
+            if (this.muted || !this.bgmPlaying || !this.ctx) return;
+            const t = this.ctx.currentTime;
+            const idx = step % melody.length;
+            if (melody[idx] > 0) {
+                const o1 = this.ctx.createOscillator();
+                const o2 = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o1.type = 'sawtooth'; o1.frequency.value = melody[idx];
+                o2.type = 'square'; o2.frequency.value = melody[idx] * 1.002;
+                g.gain.setValueAtTime(0.15, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                o1.connect(g); o2.connect(g); g.connect(this.bgmGain);
+                o1.start(t); o1.stop(t + 0.19);
+                o2.start(t); o2.stop(t + 0.19);
+            }
+            if (bass[idx] > 0) {
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.type = 'sawtooth'; o.frequency.value = bass[idx];
+                g.gain.setValueAtTime(0.12, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+                o.connect(g); g.connect(this.bgmGain);
+                o.start(t); o.stop(t + 0.19);
+            }
+            if (idx % 4 === 0) {
+                const kick = this.ctx.createOscillator();
+                const kg = this.ctx.createGain();
+                kick.type = 'sine';
+                kick.frequency.setValueAtTime(150, t);
+                kick.frequency.exponentialRampToValueAtTime(30, t + 0.1);
+                kg.gain.setValueAtTime(0.2, t);
+                kg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                kick.connect(kg); kg.connect(this.bgmGain);
+                kick.start(t); kick.stop(t + 0.12);
+            }
+            step++;
+        }, 180);
     },
 
     resumeNormalBGM() {
